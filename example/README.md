@@ -2,102 +2,78 @@
 
 Attention Based Spatial-Temporal Graph Convolutional Networks for Traffic Flow Forecasting (ASTGCN)
 
-![model architecture](figures/model.png)
+<img src="fig/ASTGCN architecture.png" alt="image-20200103164326338" style="zoom:50%;" />
 
-# References
+This is a Pytorch implementation of ASTGCN and MSTCGN. The pytorch version of ASTGCN released here only consists of the  recent component, since the other two components have the same network architecture. 
 
-[Shengnan Guo, Youfang Lin, Ning Feng, Chao Song, Huaiyu Wan(*). Attention Based Spatial-Temporal Graph Convolutional Networks for Traffic Flow Forecasting. The 33rd AAAI Conference on Artificial Intelligence (AAAI'19) 2019.](https://github.com/Davidham3/ASTGCN/blob/master/papers/2019%20AAAI_Attention%20Based%20Spatial-Temporal%20Graph%20Convolutional%20Networks%20for%20Traffic%20Flow%20Forecasting.pdf)
+# Reference
 
-# Datasets
-
-We validate our model on two highway traffic datasets PeMSD4 and PeMSD8 from California. The datasets are collected by the Caltrans Performance Measurement System ([PeMS](http://pems.dot.ca.gov/)) ([Chen et al., 2001](https://trrjournalonline.trb.org/doi/10.3141/1748-12)) in real time every 30 seconds. The traffic data are aggregated into every 5-minute interval from the raw data. The system has more than 39,000 detectors deployed on the highway in the major metropolitan areas in California. Geographic information about the sensor stations are recorded in the datasets. There are three kinds of traffic measurements considered in our experiments, including total flow, average speed, and average occupancy.
-
-We provide two dataset: PEMS-04, PEMS-08
-
-1. PEMS-04:
-   
-   307 detectors  
-   Jan to Feb in 2018  
-   3 features: flow, occupy, speed.
-
-2. PEMS-08:
-   
-   170 detectors  
-   July to Augest in 2016  
-   3 features: flow, occupy, speed.
-
-# Requirements
-
-+ python >= 3.5
-+ mxnet >= 1.3.0
-+ mxboard
-+ scipy
-+ tensorboard
-
-To install MXNet correctly, you should follow the instruction provided by [this page](https://mxnet.incubator.apache.org/install/index.html?platform=Linux&language=Python&processor=CPU).
-
-To run mxboard, you have to install tensorboard.
-
-Other dependencies can be installed using the following command:
+```latex
+@inproceedings{guo2019attention,
+  title={Attention based spatial-temporal graph convolutional networks for traffic flow forecasting},
+  author={Guo, Shengnan and Lin, Youfang and Feng, Ning and Song, Chao and Wan, Huaiyu},
+  booktitle={Proceedings of the AAAI Conference on Artificial Intelligence},
+  volume={33},
+  pages={922--929},
+  year={2019}
+}
 ```
-pip install -r requirements.txt
-```
-
-If you are using docker, install [nvidia-docker](https://github.com/NVIDIA/nvidia-docker) and run the commands below:
-```bash
-# build image
-docker build -t astgcn/mxnet:1.4.1_cu100_mkl_py35 -f docker/Dockerfile .
-
-# training model in background
-docker run -d -it --rm --runtime=nvidia -v $PWD:/mxnet --name astgcn astgcn/mxnet:1.4.1_cu100_mkl_py35 python3 train.py --config configurations/PEMS04.conf --force True
-```
-
-# Usage
-
-train model on PEMS04:
-```
-python train.py --config configurations/PEMS04.conf --force True
-```
-
-train model on PEMS08:
-```
-python train.py --config configurations/PEMS08.conf --force True
-```
-
-visualize training progress:
-```
-tensorboard --logdir logs --port 6006
-```
-then open [http://127.0.0.1:6006](http://127.0.0.1:6006) to visualize the training process.
-
-# Improvements
-
-1. We use convolutional operation to map the output of ASTGCN block to the label space because that can help the model achieve a better performance.
 
 # Configuration
 
-The configuration file config.conf contains three parts: Data, Training and Predict:
+Step 1: The loss function and metrics can be set in the configuration file in ./configurations
 
-## Data
+Step 2: The last three lines of the configuration file are as follows:
 
-+ adj_filename: path of the adjacency matrix file
-+ graph_signal_matrix_filename: path of graph signal matrix file
-+ num_of_vertices: number of vertices
-+ points_per_hour: points per hour, in our dataset is 12
-+ num_for_predict: points to predict, in our model is 12
+  ```c++
+  loss_function = masked_mae
+  metric_method = mask
+  missing_value = 0.0
+  ```
 
-## Training
+loss_function can choose 'masked_mae',  'masked_mse',  'mae',  'mse'. The loss function with a mask does not consider  missing values.
 
-+ model_name: ASTGCN or MSTGCN
-+ ctx: set ctx = cpu, or set gpu-0, which means the first gpu device
-+ optimizer: sgd, RMSprop, adam, see [this page](https://mxnet.incubator.apache.org/api/python/optimization/optimization.html#the-mxnet-optimizer-package) for more optimizer
-+ learning_rate: float, like 0.0001
-+ epochs: int, epochs to train
-+ batch_size: int
-+ num_of_weeks: int, how many weeks' data will be used
-+ num_of_days: int, how many days' data will be used
-+ num_of_hours: int, how many hours' data will be used
-+ K: int, K-order chebyshev polynomials will be used
-+ merge: int, 0 or 1, if merge equals 1, merge training set and validation set to train model
-+ prediction_filename: str, if you specify this parameter, it will save the prediction of current testing set into this file
-+ params_dir: the folder for saving parameters
+metric_method can choose 'mask', 'unmask'. The metric with a mask does not evaluate missing values.
+
+The missing_value is the missing identification, whose default value is 0.0
+
+# Datasets
+
+Step 1: Download PEMS04 and PEMS08 datasets provided by [ASTGNN](https://github.com/guoshnBJTU/ASTGNN/tree/main/data). 
+
+Step 2: Process dataset
+
+- on PEMS04 dataset
+
+  ```shell
+  python prepareData.py --config configurations/PEMS04_astgcn.conf
+  ```
+
+- on PEMS08 dataset
+
+  ```shell
+  python prepareData.py --config configurations/PEMS08_astgcn.conf
+  ```
+
+
+
+# Train and Test
+
+- on PEMS04 dataset
+
+  ```shell
+  python train_ASTGCN_r.py --config configurations/PEMS04_astgcn.conf
+  ```
+
+- on PEMS08 dataset
+
+  ```shell
+  python train_ASTGCN_r.py --config configurations/PEMS08_astgcn.conf
+  ```
+
+  
+
+  
+
+
+
